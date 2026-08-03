@@ -1,0 +1,279 @@
+version: '3.8'
+
+services:
+
+  # ============================================
+  # NGINX LOAD BALANCER (Puerto 9000)
+  # ============================================
+  nginx:
+    image: nginx:latest
+    container_name: deco_nginx_lb
+    ports:
+      - "9000:80"
+    volumes:
+      - ./nginx-loadbalancer.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      server1:
+        condition: service_healthy
+      server2:
+        condition: service_healthy
+      server3:
+        condition: service_healthy
+    networks:
+      - deco-chat-network
+    restart: unless-stopped
+    environment:
+      - TZ=America/Lima
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+
+  # ============================================
+  # SERVER 1 (FastAPI + Ollama client)
+  # ============================================
+  server1:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: deco_server1
+    environment:
+      - SERVER_ID=1
+      - GLPI_URL=${GLPI_URL}
+      - GLPI_APP_TOKEN=${GLPI_APP_TOKEN}
+      - GLPI_USER=${GLPI_USER}
+      - GLPI_PASSWORD=${GLPI_PASSWORD}
+      - DB_HOST=postgres
+      - DB_PORT=5433
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6380
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - OLLAMA_HOST=http://ollama:11435
+      - JWT_SECRET=${JWT_SECRET}
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=${LOG_LEVEL}
+    ports:
+      - "9001:8000"
+    volumes:
+      - ./server/app:/app:rw
+      - ./logs/server1:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    networks:
+      - deco-chat-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+
+  # ============================================
+  # SERVER 2 (FastAPI + Ollama client)
+  # ============================================
+  server2:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: deco_server2
+    environment:
+      - SERVER_ID=2
+      - GLPI_URL=${GLPI_URL}
+      - GLPI_APP_TOKEN=${GLPI_APP_TOKEN}
+      - GLPI_USER=${GLPI_USER}
+      - GLPI_PASSWORD=${GLPI_PASSWORD}
+      - DB_HOST=postgres
+      - DB_PORT=5433
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6380
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - OLLAMA_HOST=http://ollama:11435
+      - JWT_SECRET=${JWT_SECRET}
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=${LOG_LEVEL}
+    ports:
+      - "9002:8000"
+    volumes:
+      - ./server/app:/app:rw
+      - ./logs/server2:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    networks:
+      - deco-chat-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+
+  # ============================================
+  # SERVER 3 (FastAPI + Ollama client)
+  # ============================================
+  server3:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: deco_server3
+    environment:
+      - SERVER_ID=3
+      - GLPI_URL=${GLPI_URL}
+      - GLPI_APP_TOKEN=${GLPI_APP_TOKEN}
+      - GLPI_USER=${GLPI_USER}
+      - GLPI_PASSWORD=${GLPI_PASSWORD}
+      - DB_HOST=postgres
+      - DB_PORT=5433
+      - DB_NAME=${DB_NAME}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6380
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - OLLAMA_HOST=http://ollama:11435
+      - JWT_SECRET=${JWT_SECRET}
+      - PYTHONUNBUFFERED=1
+      - LOG_LEVEL=${LOG_LEVEL}
+    ports:
+      - "9003:8000"
+    volumes:
+      - ./server/app:/app:rw
+      - ./logs/server3:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+    networks:
+      - deco-chat-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+
+  # ============================================
+  # POSTGRESQL (BD Central)
+  # ============================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: deco_postgres
+    environment:
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - TZ=America/Lima
+    ports:
+      - "5433:5432"
+    volumes:
+      - deco_postgres_data:/var/lib/postgresql/data
+      - ./init_deco_chat.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - deco-chat-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command:
+      - "postgres"
+      - "-c"
+      - "max_connections=200"
+      - "-c"
+      - "shared_buffers=256MB"
+
+
+  # ============================================
+  # REDIS (Cache + Sessions)
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: deco_redis
+    command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes
+    ports:
+      - "6380:6379"
+    volumes:
+      - deco_redis_data:/data
+    networks:
+      - deco-chat-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    environment:
+      - TZ=America/Lima
+
+
+  # ============================================
+  # OLLAMA (LLM Local - Mistral-7B)
+  # ============================================
+  ollama:
+    image: ollama/ollama:latest
+    container_name: deco_ollama
+    ports:
+      - "11435:11434"
+    volumes:
+      - deco_ollama_data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0:11434
+    networks:
+      - deco-chat-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    # Auto pull Mistral-7B al iniciar (comentado por ahora)
+    # entrypoint: sh -c "ollama serve & sleep 5 && ollama pull mistral"
+
+
+# ============================================
+# VOLUMES (Persistencia de datos)
+# ============================================
+volumes:
+  deco_postgres_data:
+    driver: local
+  deco_redis_data:
+    driver: local
+  deco_ollama_data:
+    driver: local
+
+
+# ============================================
+# NETWORKS (Comunicación entre contenedores)
+# ============================================
+networks:
+  deco-chat-network:
+    driver: bridge
+    name: deco-chat-network
