@@ -1,0 +1,112 @@
+# Bandit Security Configuration for DECO Chat Agent
+
+# ============================================
+# General Settings
+# ============================================
+assert_template: "Possible hardcoded SQL string {0}"
+skips: []
+exclude_dirs:
+  - /tests
+  - /test
+  - /.venv
+  - /venv
+  - /migrations
+
+# ============================================
+# Test Settings
+# ============================================
+tests:
+  # SQL Injection
+  - B608  # hardcoded_sql_string
+  - B105  # hardcoded_password_string
+  - B106  # hardcoded_password_funcarg
+  - B107  # hardcoded_password_default
+
+  # Security Issues
+  - B201  # flask_debug_true
+  - B301  # pickle
+  - B302  # marshal
+  - B303  # md5
+  - B304  # des
+  - B305  # cipher
+  - B306  # mktemp_q
+  - B307  # eval
+  - B308  # mark_safe
+  - B309  # httpsconnection
+  - B310  # urllib_urlopen
+  - B311  # random
+  - B312  # telnetlib
+  - B313  # xml_bad_expat
+  - B314  # xml_bad_etree
+  - B315  # xml_bad_sax
+  - B316  # xml_bad_pulldom
+  - B317  # xml_bad_etree
+  - B318  # xml_bad_minimum_etree
+  - B319  # xml_bad_etree_iterparse
+  - B320  # xml_bad_etree_parse
+  - B321  # ftplib
+  - B322  # unverified_context
+  - B323  # unverified_context
+  - B324  # hashlib
+  - B325  # tempnam
+
+# ============================================
+# Severity Levels
+# ============================================
+level: MEDIUM  # LOW, MEDIUM, HIGH
+
+# ============================================
+# Plugin Configuration
+# ============================================
+# Django plugin settings
+django_override_settings: SETTINGS_MODULE=app.config
+
+# Flask settings
+flask_debug_true: B201
+
+# ============================================
+# Exclude patterns
+# ============================================
+exclude_dirs:
+  - /tests
+  - /test
+  - /.venv
+  - /venv
+  - __pycache__
+  - .git
+
+# Exclude files
+exclude:
+  - '*.pyc'
+  - '*.pyo'
+
+# ============================================
+# Report Format
+# ============================================
+format: json  # Can be: json, csv, txt, custom
+output_format: json
+
+# ============================================
+# Issue Suppression
+# ============================================
+# Use # nosec to suppress issues on specific lines
+# Example: subprocess.call("ls -la", shell=True)  # nosec
+
+# Suppress specific test IDs in specific files
+skipped_test_ids:
+  # Example: B101 in test files is OK
+  # B101:
+  #   - app/tests/**
+
+# ============================================
+# Custom Rules
+# ============================================
+# Add custom security checks if needed
+# This would require extending Bandit
+
+# ============================================
+# Pre-commit Integration
+# ============================================
+# This config is used by both:
+# 1. Command line: bandit -c .bandit.yaml
+# 2. Pre-commit hook: see .pre-commit-config.yaml

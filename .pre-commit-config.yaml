@@ -1,0 +1,122 @@
+# Pre-commit configuration for DECO Chat Agent
+# Install: pre-commit install
+# Run manually: pre-commit run --all-files
+
+default_stages: [ commit ]
+fail_fast: false
+minimum_pre_commit_version: 2.15.0
+
+repos:
+  # Code formatting
+  - repo: https://github.com/psf/black
+    rev: 23.12.0
+    hooks:
+      - id: black
+        language_version: python3.11
+        args: [ '--line-length=100' ]
+        stages: [ commit ]
+
+  # Import sorting
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        args: [ '--profile=black', '--line-length=100' ]
+        stages: [ commit ]
+
+  # Linting
+  - repo: https://github.com/PyCQA/flake8
+    rev: 6.1.0
+    hooks:
+      - id: flake8
+        args:
+          - '--max-line-length=100'
+          - '--extend-ignore=E203,W503,E501'
+          - '--exclude=.venv,__pycache__,migrations'
+        additional_dependencies:
+          - flake8-docstrings
+          - flake8-bugbear
+          - flake8-comprehensions
+        stages: [ commit ]
+
+  # Type checking
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.7.1
+    hooks:
+      - id: mypy
+        args: [ '--ignore-missing-imports', '--no-implicit-optional' ]
+        additional_dependencies:
+          - 'types-all'
+          - 'sqlalchemy>=2.0'
+          - 'pydantic>=2.0'
+        stages: [ commit ]
+
+  # Security
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.5
+    hooks:
+      - id: bandit
+        args: [ '-c', '.bandit.yaml' ]
+        stages: [ commit ]
+
+  # Docstring coverage
+  - repo: https://github.com/econchick/interrogate
+    rev: 1.5.0
+    hooks:
+      - id: interrogate
+        args: [ '--vv', '--fail-under=70', 'app' ]
+        stages: [ commit ]
+
+  # YAML validation
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: check-yaml
+        args: [ '--safe' ]
+      - id: check-json
+      - id: check-toml
+      - id: check-added-large-files
+        args: [ '--maxkb=500' ]
+      - id: check-merge-conflict
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+        args: [ '--markdown-args=--markdown' ]
+      - id: detect-private-key
+      - id: mixed-line-ending
+        args: [ '--fix=lf' ]
+
+  # Secrets detection
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.4.0
+    hooks:
+      - id: detect-secrets
+        args:
+          - '--baseline'
+          - '.secrets.baseline'
+          - '--allow-missing-credentials'
+        stages: [ commit ]
+
+  # Spelling
+  - repo: https://github.com/codespell-project/codespell
+    rev: v2.2.6
+    hooks:
+      - id: codespell
+        args: [ '--skip=*.pyc,*.txt,*.md' ]
+        exclude: ^(\.venv|\.git|node_modules)
+
+  # SQL/database checks
+  - repo: https://github.com/sqlalchemy/sqlalchemy
+    rev: rel_2_0
+    hooks:
+      - id: sqlalchemy
+        stages: [ commit ]
+
+  # Commit message linting
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v2.3.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [ commit-msg ]
+        args:
+          - --force-single-commit
+          - --scope-regex=(auth|search|chat|core|db|api|middleware|validators|services)
